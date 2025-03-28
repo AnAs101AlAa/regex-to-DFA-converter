@@ -1,0 +1,15 @@
+CheckEmail,name@domain.tld,Valid
+CheckEmail,name23@domain.tld,Valid
+CheckEmail,name23fgf@domain.tld,Valid
+CheckEmail,name-@domain.tld,Invalid
+CheckEmail,name@domain.tld3,Invalid
+CheckEmail,name@domain.tld3f,Invalid
+ReplaceDate,28/05/2000,05/28/2000
+ReplaceDate,01/01/2020,01/01/2020
+ReplaceDate,31/12/1999,12/31/1999
+CheckRules,"string",Valid
+CheckRules,"56546546",Valid
+CheckRules,"stri45ng",Valid
+CheckRules,"string',Invalid
+CheckRules,'string",Invalid
+CheckRules,"\ddasadas",Valid
