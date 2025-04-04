@@ -139,23 +139,23 @@ def or_op(node1, node2):
     state += 1
     nfa[f"S{state}"] = {"isTerminatingState": False}
     if node1["actions"] == []:
-        nfa[f"S{node1["end"]}"]["epsilon"] = f"S{state}"
+        nfa[f"S{node1["end"]}"]["epsilon"] = [f"S{state}"]
     else:
         for item in node1["actions"]:
-            nfa[f"S{node1["end"]}"][item] = f"S{state}"
+            nfa[f"S{node1["end"]}"][item] = [f"S{state}"]
 
-    nfa[f"S{state}"] = {"isTerminatingState": False, "epsilon": f"S{state+2}"}
+    nfa[f"S{state}"] = {"isTerminatingState": False, "epsilon": [f"S{state+2}"]}
 
     #new node for branch two then epsilon into closer
     state += 1
     nfa[f"S{state}"] = {"isTerminatingState": False}
     if node2["actions"] == []:
-        nfa[f"S{node2["end"]}"]["epsilon"] = f"S{state}"
+        nfa[f"S{node2["end"]}"]["epsilon"] = [f"S{state}"]
     else:
         for item in node2["actions"]:
-            nfa[f"S{node2["end"]}"][item] = f"S{state}"
+            nfa[f"S{node2["end"]}"][item] = [f"S{state}"]
 
-    nfa[f"S{state}"] = {"isTerminatingState": False, "epsilon": f"S{state+1}"}
+    nfa[f"S{state}"] = {"isTerminatingState": False, "epsilon": [f"S{state+1}"]}
 
     #create closer for branches
     state +=1
@@ -172,8 +172,8 @@ def zero_more_op(node):
         "end": state,
         "actions": []
     }
-    nfa[f"S{state}"] = {"isTerminatingState": False, "epsilon": f"S{node["start"]}"}
-    nfa[f"S{node["start"]}"].update({"epsilon": f"S{state}", node["actions"][0]: f"S{state}"})
+    nfa[f"S{state}"] = {"isTerminatingState": False, "epsilon": [f"S{node["start"]}"]}
+    nfa[f"S{node["start"]}"].update({"epsilon": [f"S{state}"], node["actions"][0]: [f"S{state}"]})
     state += 1
     return new_state
 
@@ -185,7 +185,7 @@ def zero_one_op(node):
         "actions": []
     }
     nfa[f"S{state}"] = {"isTerminatingState": False}
-    nfa[f"S{node["start"]}"].update({"epsilon": f"S{state}", node["actions"][0]: f"S{state}"})
+    nfa[f"S{node["start"]}"].update({"epsilon": [f"S{state}"], node["actions"][0]: [f"S{state}"]})
     state +=1
     return new_state
 
@@ -197,8 +197,8 @@ def one_more_op(node):
         "actions": []
     }
 
-    nfa[f"S{state}"] = {"isTerminatingState": False, "epsilon": f"S{node["start"]}"}
-    nfa[f"S{node["start"]}"].update({node["actions"][0]: f"S{state}"})
+    nfa[f"S{state}"] = {"isTerminatingState": False, "epsilon": [f"S{node["start"]}"]}
+    nfa[f"S{node["start"]}"].update({node["actions"][0]: [f"S{state}"]})
     state += 1
     return new_state
 
@@ -216,16 +216,16 @@ def concat_op(node1, node2):
 
     if node1["actions"] == []:
         if node2["actions"] == []:
-            nfa[f"S{node1["end"]}"].update({"epsilon": f"S{node2["start"]}"})
+            nfa[f"S{node1["end"]}"].update({"epsilon": [f"S{node2["start"]}"]})
         for action in node2["actions"]:
-            nfa[f"S{node1["end"]}"].update({action: f"S{node2["start"]}"})
+            nfa[f"S{node1["end"]}"].update({action: [f"S{node2["start"]}"]})
         return new_node
     
     for action in node1["actions"]:
-        nfa[f"S{node1["end"]}"].update({action: f"S{node2["start"]}"})
+        nfa[f"S{node1["end"]}"].update({action: [f"S{node2["start"]}"]})
     
     for action in node2["actions"]:
-        nfa[f"S{node2["end"]}"].update({action: f"S{state}"})
+        nfa[f"S{node2["end"]}"].update({action: [f"S{state}"]})
         new_node["actions"].append(action)
     return new_node
 
