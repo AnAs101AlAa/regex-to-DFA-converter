@@ -3,7 +3,9 @@ import argparse
 
 state = 0
 nfa = {}
-
+dfa = {}
+dfa_intermediate = {}
+dfa_states_count = 0
 
 def exclusive_bracket(index, pattern):
     postfix_string = ""
@@ -295,10 +297,84 @@ def convert_nfa(pattern):
     nfa["startingState"] = f"S{last_element["start"]}"
     nfa[f"S{last_element["end"]}"]["isTerminatingState"] = True
 
+def get_epsilon_closure(state):
+    closure = {state}
+    stack = [state]
+    while stack:
+        current_state = stack.pop()
+        print("\n")
+        print("Stack: ", stack)        
+        print(current_state)
+        print(nfa[current_state])
+        print("\n")
+        
+
+        if "epsilon" in nfa[current_state]:
+            for next_state in nfa[current_state]["epsilon"]:
+                if next_state not in closure:
+                    closure.add(next_state)
+                    stack.append(next_state)
+    return closure
+
+
+def get_transitions(closure):
+    transitions = {}
+    for state in closure:
+        for action, next_state in nfa[state].items():
+            if action != "isTerminatingState" and action != "epsilon":
+                if action not in transitions:
+                    transitions[action] = set()
+                transitions[action].add(next_state)
+    return transitions
+
+
+
+def convert_intermediate_dfa():
+    dfa_states_count = 0
+    starting_nfa_state = nfa["startingState"]
+    starting_dfa_state = {}
+    
+    starting_dfa_state["closure"] = get_epsilon_closure(starting_nfa_state)
+    starting_dfa_state["isTerminatingState"] = False
+    starting_dfa_state["transitions"] = get_transitions(starting_dfa_state["closure"])
+    state_name = f"State_{dfa_states_count}"
+    dfa_intermediate[state_name] = starting_dfa_state
+    dfa_states_count += 1
+
+    dfa_intermediate[state_name]["isTerminatingState"] = any(nfa[state]["isTerminatingState"] for state in starting_dfa_state["closure"])
+
+    print(dfa_intermediate)
+
+    for i in range(dfa_states_count):
+        transtitions = dfa_intermediate[f"State_{i}"]["transitions"]
+        for action in transtitions.keys():
+            new_closure = set()
+            for state in transtitions[action]:
+                print("\n")
+                print(state,nfa[state])
+                print("\n")
+                new_closure.update(get_epsilon_closure(state))
+            new_closure = frozenset(new_closure)
+            if new_closure in dfa_intermediate.values():
+                continue
+            # Create a new state name based on the current count
+            new_state_name = f"State_{dfa_states_count}"
+            dfa_intermediate[new_state_name] = {}
+            dfa_intermediate[new_state_name]["closure"] = new_closure
+            dfa_intermediate[new_state_name]["transitions"] = get_transitions(new_closure)
+            dfa_intermediate[new_state_name]["isTerminatingState"] = any(nfa[state]["isTerminatingState"] for state in new_closure)
+            dfa_states_count += 1
+
+    
+    
+    
 
 
 def main():
     postfix_string = postfix_convert(0,"[A-ZBD].|(BR)f")
     convert_nfa(postfix_string)
+    print("NFA: ", nfa)
+    print("\n")
+    convert_intermediate_dfa()
 if __name__ == "__main__":
     main()
