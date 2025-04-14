@@ -389,36 +389,121 @@ def convert_intermediate_dfa():
 def convert_dfa():
     dfa_intermediate = convert_intermediate_dfa()
     dfa = {}
+
     for state_name, state_data in dfa_intermediate.items():
         dfa[state_name] = {
             "isTerminatingState": state_data["isTerminatingState"],
-            "transitions": state_data["transitions"]
+            "transitions": {}
         }
-    mapping = {}
+
     for state_name, state_data in dfa.items():
-        transitions = state_data["transitions"]
-        for action in transitions.keys():
-            next_states = transitions[action]
-            for state in next_states:
-                if state not in mapping:
-                    closure = get_epsilon_closure(state)
-                    for dfa_state_name, dfa_state_data in dfa_intermediate.items():
-                        if "closure" in dfa_state_data and set(dfa_state_data["closure"]) == set(closure):
-                            mapping[state] = dfa_state_name
-                            dfa[state_name]["transitions"][action] = mapping[state]
-                            break
-                else:
-                    dfa[state_name]["transitions"][action] = mapping[state]
+        transitions = dfa_intermediate[state_name]["transitions"]
 
+        for action, target_nfa_states in transitions.items():
+            combined_closure = []
 
+            for nfa_state in target_nfa_states:
+                closure = get_epsilon_closure(nfa_state)
+                for state in closure:
+                    if state not in combined_closure:
+                        combined_closure.append(state)
+
+            for dfa_state_name, dfa_state_data in dfa_intermediate.items():
+                if set(dfa_state_data["closure"]) == set(combined_closure):
+                    dfa[state_name]["transitions"][action] = dfa_state_name
+                    break
 
     return dfa
 
 
 
+def minimize_dfa(dfa):
+    # Gather all states and the alphabet (symbols)
+    states = list(dfa.keys())
+    alphabet = set()
+    for state in states:
+        for symbol in dfa[state]["transitions"]:
+            alphabet.add(symbol)
+
+    # Partition states into accepting and non-accepting groups
+    accepting = {state for state in states if dfa[state]["isTerminatingState"]}
+    non_accepting = set(states) - accepting
+
+    partition = []
+    if accepting:
+        partition.append(accepting)
+    if non_accepting:
+        partition.append(non_accepting)
+
+    # Refinement of partitions using transition behavior
+    changed = True
+    while changed:
+        changed = False
+        new_partition = []
+        # Process each group in the current partition
+        for group in partition:
+            if len(group) <= 1:
+                new_partition.append(group)
+                continue
+
+            # Create subgroups based on each state's signature
+            # Signature: tuple of (symbol, destination_group_index) for each symbol in sorted alphabet
+            subgroups = {}
+            for state in group:
+                signature = []
+                for symbol in sorted(alphabet):
+                    dest = dfa[state]["transitions"].get(symbol)
+                    dest_group = None
+                    if dest is not None:
+                        # Find the group index in partition which contains the destination
+                        for idx, part in enumerate(partition):
+                            if dest in part:
+                                dest_group = idx
+                                break
+                    signature.append((symbol, dest_group))
+                signature = tuple(signature)
+                subgroups.setdefault(signature, set()).add(state)
+            
+            # If more than one subgroup is created, mark as changed
+            if len(subgroups) > 1:
+                changed = True
+                for subgroup in subgroups.values():
+                    new_partition.append(subgroup)
+            else:
+                new_partition.append(group)
+        partition = new_partition
+
+    # STEP 3: Build the minimized DFA
+    # Map each original state to the new minimized state name
+    state_mapping = {}
+    minimized_dfa = {}
+
+    # Create new state names for each group
+    for idx, group in enumerate(partition):
+        new_state = f"M{idx}"
+        for state in group:
+            state_mapping[state] = new_state
+        # Use a representative state (any state) for setting up transitions and termination flag
+        rep = next(iter(group))
+        minimized_dfa[new_state] = {
+            "isTerminatingState": dfa[rep]["isTerminatingState"],
+            "transitions": {}
+        }
+
+    # Remap transitions to use new state names
+    for idx, group in enumerate(partition):
+        new_state = f"M{idx}"
+        rep = next(iter(group))
+        for symbol in sorted(alphabet):
+            dest = dfa[rep]["transitions"].get(symbol)
+            if dest is not None:
+                minimized_dfa[new_state]["transitions"][symbol] = state_mapping[dest]
+
+    return minimized_dfa
+
 
 def main():
-    postfix_string = postfix_convert(0, "[A-ZBD].|(BR)f")
+    postfix_string = postfix_convert(0, "((abc)|(abd))")
     convert_nfa(postfix_string)
     print("NFA:")
     for state, data in nfa.items():
@@ -427,6 +512,12 @@ def main():
     dfa = convert_dfa()
     print("DFA:")
     for state, data in dfa.items():
+        print(f"{state}: {data}")
+        print("\n")
+
+    minimized_dfa = minimize_dfa(dfa)
+    print("Minimized DFA:")
+    for state, data in minimized_dfa.items():
         print(f"{state}: {data}")
         print("\n")
 
