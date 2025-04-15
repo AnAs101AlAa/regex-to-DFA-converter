@@ -1,9 +1,9 @@
 import re
 import argparse
-
+from graphviz import Digraph
+from collections import defaultdict
 state = 0
 nfa = {}
-
 
 def exclusive_bracket(index, pattern):
     postfix_string = ""
@@ -417,7 +417,7 @@ def convert_dfa():
 
 
 
-def minimize_dfa(dfa):
+def minimize_dfa(dfa,starting_state):
     # Gather all states and the alphabet (symbols)
     states = list(dfa.keys())
     alphabet = set()
@@ -499,11 +499,72 @@ def minimize_dfa(dfa):
             if dest is not None:
                 minimized_dfa[new_state]["transitions"][symbol] = state_mapping[dest]
 
-    return minimized_dfa
+    print(state_mapping)
+    return minimized_dfa, state_mapping[starting_state]
+
+def compress_symbols(symbols):
+    """
+    Compress a list of single-character symbols into ranges where possible.
+    Example: ['a', 'b', 'c', 'e'] => ['a-c', 'e']
+    """
+    symbols = sorted(symbols)
+    ranges = []
+    i = 0
+    while i < len(symbols):
+        start = ord(symbols[i])
+        end = start
+        while i + 1 < len(symbols) and ord(symbols[i + 1]) == end + 1:
+            i += 1
+            end = ord(symbols[i])
+        if start == end:
+            ranges.append(chr(start))
+        elif end == start + 1:
+            ranges.append(chr(start))
+            ranges.append(chr(end))
+        else:
+            ranges.append(f"{chr(start)}-{chr(end)}")
+        i += 1
+    return ranges
+
+
+def draw_dfa(dfa, initial_state, filename='dfa_graph', view=True):
+    """
+    Draws a DFA using Graphviz, grouping transitions with the same destination
+    and compressing character sequences into ranges like [a-c].
+    """
+    dot = Digraph(format='png')
+    dot.attr(rankdir='LR')  # Left-to-right layout
+
+    # Optional invisible start node
+    dot.node('', shape='none')
+
+    # Create nodes
+    for state, info in dfa.items():
+        shape = 'doublecircle' if info['isTerminatingState'] else 'circle'
+        dot.node(state, shape=shape)
+
+    # Group transitions: { (src, dst): [symbols] }
+    grouped_edges = defaultdict(list)
+
+    for state, info in dfa.items():
+        for symbol, dest in info['transitions'].items():
+            grouped_edges[(state, dest)].append(symbol)
+
+    # Draw grouped edges with compressed symbol labels
+    for (src, dst), symbols in grouped_edges.items():
+        compressed = compress_symbols(symbols)
+        label = "[" + ", ".join(compressed) + "]"
+        dot.edge(src, dst, label=label)
+
+    # Arrow to initial state
+    dot.edge('', initial_state)
+
+    # Render and view
+    dot.render(filename, view=view)
 
 
 def main():
-    postfix_string = postfix_convert(0, "((abc)|(abd))")
+    postfix_string = postfix_convert(0, "[a-z].bc")
     convert_nfa(postfix_string)
     print("NFA:")
     for state, data in nfa.items():
@@ -515,11 +576,17 @@ def main():
         print(f"{state}: {data}")
         print("\n")
 
-    minimized_dfa = minimize_dfa(dfa)
+    minimized_dfa,starting_state = minimize_dfa(dfa,"State_0")
     print("Minimized DFA:")
     for state, data in minimized_dfa.items():
         print(f"{state}: {data}")
         print("\n")
+
+    print("Starting state of minimized DFA:", starting_state)
+
+    print("Final DFA:", minimized_dfa)
+
+    draw_dfa(minimized_dfa, 'M3', filename='dfa_graph', view=True)
 
 if __name__ == "__main__":
     main()
