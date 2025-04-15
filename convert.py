@@ -98,8 +98,8 @@ def form_state(index, pattern):
     new_state["start"] = state;
     new_state["end"] = state;
     if pattern[index] == '.':
-        new_state["actions"] = [chr(i) for i in range(48, 58)] + [chr(i) for i in range(65, 91)] + [chr(i) for i in
-                                                                                                    range(97, 123)]
+        new_state["actions"] = [chr(i) for i in range(48, 59)] + [chr(i) for i in range(65, 92)] + [chr(i) for i in
+                                                                                                    range(97, 124)]
     else:
         new_state["actions"] = [pattern[index]]
 
@@ -263,11 +263,11 @@ def convert_nfa(pattern):
 
         elif pattern[index] == '.':
             new_actions = []
-            for action in range(ord('A'), ord('Z')):
+            for action in range(ord('A'), ord('Z')+1):
                 new_actions.append(chr(action))
-            for action in range(ord('a'), ord('z')):
+            for action in range(ord('a'), ord('z')+1):
                 new_actions.append(chr(action))
-            for action in range(ord('0'), ord('9')):
+            for action in range(ord('0'), ord('9')+1):
                 new_actions.append(chr(action))
             new_state = {
                 "start": state,
@@ -301,7 +301,10 @@ def convert_nfa(pattern):
         index += 1
     last_element = state_stack.pop()
     nfa["startingState"] = f"S{last_element["start"]}"
-    nfa[f"S{last_element["end"]}"]["isTerminatingState"] = True
+    if(f"S{last_element["end"]}" not in nfa):
+        nfa[f"S{last_element["end"]}"] = {"isTerminatingState": True}
+    else:
+        nfa[f"S{last_element["end"]}"]["isTerminatingState"] = True
 
 
 def get_epsilon_closure(incoming_state):
@@ -564,7 +567,7 @@ def draw_dfa(dfa, initial_state, filename='dfa_graph', view=True):
 
 
 def main():
-    postfix_string = postfix_convert(0, "[a-z].bc")
+    postfix_string = postfix_convert(0, ".")
     convert_nfa(postfix_string)
     print("NFA:")
     for state, data in nfa.items():
