@@ -175,12 +175,23 @@ def zero_more_op(node):
         "end": state,
         "actions": []
     }
-    nfa[f"S{state}"] = {"isTerminatingState": False, "epsilon": [f"S{node["start"]}"]}
-    if "epsilon" in nfa[f"S{node['start']}"]:
-        nfa[f"S{node['start']}"]["epsilon"].append(f"S{state}")
+    if not node["actions"] and "epsilon" not in nfa[f"S{node['end']}"]:
+        nfa[f"S{node['end']}"] = {"isTerminatingState": False, "epsilon": [f"S{node['start']}"]}
+        if "epsilon" in nfa[f"S{node['start']}"]:
+            nfa[f"S{node['start']}"]["epsilon"].append(f"S{node['end']}")
+        else:
+            nfa[f"S{node['start']}"].update({"epsilon": f"S{node['end']}]"})
+        new_state["end"] = node["end"]
     else:
-        nfa[f"S{node['start']}"].update({"epsilon": [f"S{state}"]})
-    state += 1
+        nfa[f"S{state}"] = {"isTerminatingState": False, "epsilon": [f"S{node['start']}"]}
+        if "epsilon" in nfa[f"S{node['start']}"]:
+            nfa[f"S{node['start']}"]["epsilon"].append(f"S{state}")
+        else:
+            nfa[f"S{node['start']}"].update({"epsilon": [f"S{state}"]})
+        for action in node["actions"]:
+            nfa[f"S{node['start']}"].update({action: [f"S{state}"]})
+        new_state["end"] = state
+        state += 1
     return new_state
 
 
@@ -191,12 +202,24 @@ def zero_one_op(node):
         "end": state,
         "actions": []
     }
-    nfa[f"S{state}"] = {"isTerminatingState": False}
-    if "epsilon" in nfa[f"S{node['start']}"]:
-        nfa[f"S{node['start']}"]["epsilon"].append(f"S{state}")
+    if not node["actions"] and "epsilon" not in nfa[f"S{node['end']}"]:
+        nfa[f"S{node['end']}"] = {"isTerminatingState": False}
+        if "epsilon" in nfa[f"S{node['start']}"]:
+            nfa[f"S{node['start']}"]["epsilon"].append(f"S{node['end']}")
+        else:
+            nfa[f"S{node['start']}"].update({"epsilon": [f"S{node['end']}"]})
+        new_state["end"] = node["end"]
     else:
-        nfa[f"S{node['start']}"].update({"epsilon": [f"S{state}"]})  
-    state += 1
+        nfa[f"S{state}"] = {"isTerminatingState": False}
+        if "epsilon" in nfa[f"S{node['start']}"]:
+            nfa[f"S{node['start']}"]["epsilon"].append(f"S{state}")
+        else:
+            nfa[f"S{node['start']}"].update({"epsilon": [f"S{state}"]})
+        for action in node["actions"]:
+            nfa[f"S{node['start']}"].update({action: [f"S{state}"]})
+        new_state["end"] = state
+        state += 1
+
     return new_state
 
 
@@ -208,9 +231,16 @@ def one_more_op(node):
         "actions": []
     }
 
-    nfa[f"S{state}"] = {"isTerminatingState": False, "epsilon": [f"S{node["start"]}"]}
-    nfa[f"S{node["start"]}"].update({node["actions"][0]: [f"S{state}"]})
-    state += 1
+    if not node["actions"] and "epsilon" not in nfa[f"S{node['end']}"]:
+        nfa[f"S{node['end']}"] = {"isTerminatingState": False, "epsilon": [f"S{node['start']}"]}
+        new_state["end"] = node["end"]
+    else:
+        nfa[f"S{state}"] = {"isTerminatingState": False, "epsilon": [f"S{node['start']}"]}
+        for action in node["actions"]:
+            nfa[f"S{node['start']}"].update({action: [f"S{state}"]})
+        new_state["end"] = state
+        state += 1
+
     return new_state
 
 
@@ -228,7 +258,10 @@ def concat_op(node1, node2):
 
     if node1["actions"] == []:
         if node2["actions"] == []:
-            nfa[f"S{node1["end"]}"].update({"epsilon": [f"S{node2["start"]}"]})
+            if "epsilon" in nfa[f"S{node1['end']}"]:
+                nfa[f"S{node1['end']}"]["epsilon"].append(f"S{node2['start']}")
+            else:
+                nfa[f"S{node1['end']}"].update({"epsilon": [f"S{node2['start']}"]})
         for action in node2["actions"]:
             nfa[f"S{node1["end"]}"].update({action: [f"S{node2["start"]}"]})
         return new_node
@@ -633,7 +666,7 @@ def draw_nfa( filename='nfa_graph', view=True):
     dot.render(filename, view=view)
 
 def main():
-    postfix_string = postfix_convert(0, "(a|b)*[a-r]+m")
+    postfix_string = postfix_convert(0, "(a|b)*[a-e]+av?")
     convert_nfa(postfix_string)
     print("NFA:")
     for state, data in nfa.items():
