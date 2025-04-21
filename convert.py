@@ -35,11 +35,6 @@ def postfix_convert(index, pattern):
     concat_flag = 0
     i = index
     while i < len(pattern):
-        # check to add concat operator for each pair
-        if concat_flag == 2:
-            postfix_string += '!'
-            concat_flag = 1
-
         # or operation
         if (pattern[i] == '|'):
             # check if group to or and collect it
@@ -76,18 +71,24 @@ def postfix_convert(index, pattern):
             postfix_string += addition
             i = new_index
             concat_flag += 1
+            i += 1
+            continue
 
         # uni operators and any other character
         else:
             if i < len(pattern) - 1 and (pattern[i + 1] == '*' or pattern[i + 1] == '+' or pattern[i + 1] == '?'):
                 postfix_string += pattern[i] + pattern[i + 1]
+                concat_flag += 1
                 i += 1
+            elif pattern[i] == '*' or pattern[i] == '+' or pattern[i] == '?':
+                postfix_string += pattern[i]
             else:
                 postfix_string += pattern[i]
-            concat_flag += 1
+                concat_flag += 1
         i += 1
-    if concat_flag == 2:
-        postfix_string += '!'
+        if concat_flag >= 2:
+            postfix_string += '!'
+            concat_flag = 1
 
     return postfix_string
 
@@ -175,7 +176,10 @@ def zero_more_op(node):
         "actions": []
     }
     nfa[f"S{state}"] = {"isTerminatingState": False, "epsilon": [f"S{node["start"]}"]}
-    nfa[f"S{node["start"]}"].update({"epsilon": [f"S{state}"], node["actions"][0]: [f"S{state}"]})
+    if "epsilon" in nfa[f"S{node['start']}"]:
+        nfa[f"S{node['start']}"]["epsilon"].append(f"S{state}")
+    else:
+        nfa[f"S{node['start']}"].update({"epsilon": [f"S{state}"]})
     state += 1
     return new_state
 
@@ -188,7 +192,10 @@ def zero_one_op(node):
         "actions": []
     }
     nfa[f"S{state}"] = {"isTerminatingState": False}
-    nfa[f"S{node["start"]}"].update({"epsilon": [f"S{state}"], node["actions"][0]: [f"S{state}"]})
+    if "epsilon" in nfa[f"S{node['start']}"]:
+        nfa[f"S{node['start']}"]["epsilon"].append(f"S{state}")
+    else:
+        nfa[f"S{node['start']}"].update({"epsilon": [f"S{state}"]})  
     state += 1
     return new_state
 
@@ -301,10 +308,17 @@ def convert_nfa(pattern):
         index += 1
     last_element = state_stack.pop()
     nfa["startingState"] = f"S{last_element["start"]}"
-    if(f"S{last_element["end"]}" not in nfa):
-        nfa[f"S{last_element["end"]}"] = {"isTerminatingState": True}
+    if f"S{last_element['end']}" not in nfa:
+        nfa[f"S{last_element['end']}"] = {"isTerminatingState": True}
     else:
-        nfa[f"S{last_element["end"]}"]["isTerminatingState"] = True
+        max_state = last_element['end']
+        for action, states in nfa[f"S{last_element['end']}"].items():
+            if action != "isTerminatingState":
+                for state in states:
+                    state_index = int(state[1:])
+                    if state_index > max_state:
+                        max_state = state_index
+        nfa[f"S{max_state}"]["isTerminatingState"] = True
 
 
 def get_epsilon_closure(incoming_state):
@@ -567,7 +581,7 @@ def draw_dfa(dfa, initial_state, filename='dfa_graph', view=True):
 
 
 def main():
-    postfix_string = postfix_convert(0, ".")
+    postfix_string = postfix_convert(0, "(a|b)*[a-r]+m")
     convert_nfa(postfix_string)
     print("NFA:")
     for state, data in nfa.items():
