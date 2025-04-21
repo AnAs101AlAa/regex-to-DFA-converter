@@ -568,21 +568,18 @@ def draw_dfa(dfa, initial_state, filename='dfa_graph', view=True):
 
 def draw_nfa( filename='nfa_graph', view=True):
     """
-    Draws an NFA using Graphviz, adapted for your input format:
+    Draws an NFA using Graphviz, adapted for this input format:
     {
-        'S0': {'isTerminatingState': True, 'a': ['S1'], 'b': ['S0'], ...},
+        'S0': {'isTerminatingState': True, 'a': ['S1'], ...},
         'S1': {'isTerminatingState': False},
         'startingState': 'S0'
     }
     """
     dot = Digraph(format='png')
-    dot.attr(rankdir='LR')  # Left-to-right layout
+    dot.attr(rankdir='LR')
 
-    # Extract the starting state
     starting_state = nfa['startingState']
-
-    # Optional invisible start node
-    dot.node('', shape='none')
+    dot.node('', shape='none')  # invisible starting point
 
     # Create nodes
     for state, info in nfa.items():
@@ -603,18 +600,23 @@ def draw_nfa( filename='nfa_graph', view=True):
             for dst in dests:
                 grouped_edges[(src_state, dst)].append(symbol)
 
-    # Draw grouped edges with compressed symbol labels
+    # Draw edges
     for (src, dst), symbols in grouped_edges.items():
-        compressed = compress_symbols(symbols)
-        label = "[" + ", ".join(compressed) + "]"
-        dot.edge(src, dst, label=label)
+        # Separate epsilon transitions
+        epsilons = [s for s in symbols if s == 'epsilon']
+        others = [s for s in symbols if s != 'epsilon']
 
-    # Arrow to initial state
-    dot.edge('', starting_state)
+        if others:
+            compressed = compress_symbols(others)
+            label = "[" + ", ".join(compressed) + "]"
+            dot.edge(src, dst, label=label)
 
-    # Render and view
+        for _ in epsilons:
+            dot.edge(src, dst, label="ε")
+
+    dot.edge('', starting_state)  # initial arrow
+
     dot.render(filename, view=view)
-
 
 def main():
     postfix_string = postfix_convert(0, "(a|b)")
