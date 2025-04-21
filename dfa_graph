@@ -3,11 +3,6 @@ digraph {
 	"" [shape=none]
 	M0 [shape=doublecircle]
 	M1 [shape=circle]
-	M2 [shape=circle]
-	M3 [shape=circle]
-	M0 -> M1 [label="[c]"]
-	M2 -> M2 [label="[0-8, A-Y, a, c-y]"]
-	M2 -> M0 [label="[b]"]
-	M3 -> M2 [label="[a-z]"]
-	"" -> M3
+	M1 -> M0 [label="[a, b]"]
+	"" -> M1
 }

@@ -580,6 +580,58 @@ def draw_dfa(dfa, initial_state, filename='dfa_graph', view=True):
     dot.render(filename, view=view)
 
 
+def draw_nfa( filename='nfa_graph', view=True):
+    """
+    Draws an NFA using Graphviz, adapted for this input format:
+    {
+        'S0': {'isTerminatingState': True, 'a': ['S1'], ...},
+        'S1': {'isTerminatingState': False},
+        'startingState': 'S0'
+    }
+    """
+    dot = Digraph(format='png')
+    dot.attr(rankdir='LR')
+
+    starting_state = nfa['startingState']
+    dot.node('', shape='none')  # invisible starting point
+
+    # Create nodes
+    for state, info in nfa.items():
+        if state == 'startingState':
+            continue
+        shape = 'doublecircle' if info.get('isTerminatingState', False) else 'circle'
+        dot.node(state, shape=shape)
+
+    # Group transitions: { (src, dst): [symbols] }
+    grouped_edges = defaultdict(list)
+
+    for src_state, info in nfa.items():
+        if src_state == 'startingState':
+            continue
+        for symbol, dests in info.items():
+            if symbol == 'isTerminatingState':
+                continue
+            for dst in dests:
+                grouped_edges[(src_state, dst)].append(symbol)
+
+    # Draw edges
+    for (src, dst), symbols in grouped_edges.items():
+        # Separate epsilon transitions
+        epsilons = [s for s in symbols if s == 'epsilon']
+        others = [s for s in symbols if s != 'epsilon']
+
+        if others:
+            compressed = compress_symbols(others)
+            label = "[" + ", ".join(compressed) + "]"
+            dot.edge(src, dst, label=label)
+
+        for _ in epsilons:
+            dot.edge(src, dst, label="ε")
+
+    dot.edge('', starting_state)  # initial arrow
+
+    dot.render(filename, view=view)
+
 def main():
     postfix_string = postfix_convert(0, "(a|b)*[a-r]+m")
     convert_nfa(postfix_string)
@@ -602,8 +654,8 @@ def main():
     print("Starting state of minimized DFA:", starting_state)
 
     print("Final DFA:", minimized_dfa)
-
-    draw_dfa(minimized_dfa, 'M3', filename='dfa_graph', view=True)
+    draw_nfa()
+    draw_dfa(minimized_dfa, starting_state, filename='dfa_graph', view=True)
 
 if __name__ == "__main__":
     main()
