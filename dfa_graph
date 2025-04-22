@@ -1,8 +1,0 @@
-digraph {
-	rankdir=LR
-	"" [shape=none]
-	M0 [shape=doublecircle]
-	M1 [shape=circle]
-	M1 -> M0 [label="[a, b]"]
-	"" -> M1
-}
