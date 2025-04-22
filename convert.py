@@ -90,6 +90,9 @@ def postfix_convert(index, pattern):
             postfix_string += '!'
             concat_flag = 1
 
+    if concat_flag >= 2:
+        postfix_string += '!'
+        concat_flag = 1
     return postfix_string
 
 
@@ -666,7 +669,7 @@ def draw_nfa( filename='nfa_graph', view=True):
     dot.render(filename, view=view)
 
 def main():
-    postfix_string = postfix_convert(0, "(a|b)*[a-e]+av?")
+    postfix_string = postfix_convert(0, "(abc|de)*|(f+t)+")
     convert_nfa(postfix_string)
     print("NFA:")
     for state, data in nfa.items():
