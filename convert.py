@@ -35,9 +35,7 @@ def postfix_convert(index, pattern):
     concat_flag = 0
     i = index
     while i < len(pattern):
-        # or operation
         if (pattern[i] == '|'):
-            # check if group to or and collect it
             if (pattern[i + 1] == '('):
                 addition, new_index = postfix_convert(i + 2, pattern)
                 postfix_string += addition
@@ -47,25 +45,21 @@ def postfix_convert(index, pattern):
                 i += 1
             postfix_string += '|'
 
-        # range operator A-Z
         elif (i < len(pattern) - 1 and pattern[i + 1] == '-'):
             postfix_string += pattern[i]
             postfix_string += pattern[i + 2]
             postfix_string += '-'
             i += 2
 
-        # go collect group
         elif (pattern[i] == '('):
             addition, new_index = postfix_convert(i + 1, pattern)
             i = new_index
             postfix_string += addition
             concat_flag += 1
 
-        # closing group (end recursive call)
         elif (pattern[i] == ')'):
             return postfix_string, i
 
-        # go collect or group
         elif (pattern[i] == '['):
             addition, new_index = exclusive_bracket(i + 1, pattern)
             postfix_string += addition
@@ -74,7 +68,6 @@ def postfix_convert(index, pattern):
             i += 1
             continue
 
-        # uni operators and any other character
         else:
             if i < len(pattern) - 1 and (pattern[i + 1] == '*' or pattern[i + 1] == '+' or pattern[i + 1] == '?'):
                 postfix_string += pattern[i] + pattern[i + 1]
@@ -123,7 +116,6 @@ def or_op(node1, node2):
         "actions": []
     }
 
-    # if both nodes are connected create new state to separate them and then connect them with usual or
     if (node1["end"] == node2["start"]):
         nfa[f"S{state}"] = {"isTerminatingState": False}
         for item in nfa[f"S{node1["end"]}"].keys():
@@ -134,13 +126,11 @@ def or_op(node1, node2):
         state += 1
         new_state["start"] = state
 
-    # opener node to branch from
     nfa[f"S{state}"] = {
         "isTerminatingState": False,
         "epsilon": [f"S{node1["start"]}", f"S{node2["start"]}"]
     }
 
-    # new node for branch one then epsilon into closer
     state += 1
     nfa[f"S{state}"] = {"isTerminatingState": False}
     if node1["actions"] == []:
@@ -151,7 +141,6 @@ def or_op(node1, node2):
 
     nfa[f"S{state}"] = {"isTerminatingState": False, "epsilon": [f"S{state + 2}"]}
 
-    # new node for branch two then epsilon into closer
     state += 1
     nfa[f"S{state}"] = {"isTerminatingState": False}
     if node2["actions"] == []:
@@ -162,7 +151,6 @@ def or_op(node1, node2):
 
     nfa[f"S{state}"] = {"isTerminatingState": False, "epsilon": [f"S{state + 1}"]}
 
-    # create closer for branches
     state += 1
     nfa[f"S{state}"] = {"isTerminatingState": False}
 
@@ -406,13 +394,11 @@ def convert_intermediate_dfa():
         for action in transtitions.keys():
             new_closure = []
             for state in transtitions[action]:
-                # Add each state from epsilon closure only if not already in new_closure
                 epsilon_states = get_epsilon_closure(state)
                 for epsilon_state in epsilon_states:
                     if epsilon_state not in new_closure:
                         new_closure.append(epsilon_state)
 
-            # Check if this closure already exists in any state
             exists = False
             for state_name, state_data in dfa_intermediate.items():
                 if "closure" in state_data and set(state_data["closure"]) == set(new_closure):
@@ -422,7 +408,6 @@ def convert_intermediate_dfa():
             if exists:
                 continue
 
-            # Create a new state name based on the current count
             new_state_name = f"State_{dfa_states_count}"
             dfa_intermediate[new_state_name] = {}
             dfa_intermediate[new_state_name]["closure"] = new_closure
@@ -432,10 +417,6 @@ def convert_intermediate_dfa():
             dfa_states_count += 1
         i += 1
 
-    """ for i in range(dfa_states_count):
-        print("\n")
-        print(f"State_{i}", dfa_intermediate[f"State_{i}"])
-        print("\n") """
     return dfa_intermediate
 
 
@@ -471,14 +452,12 @@ def convert_dfa():
 
 
 def minimize_dfa(dfa,starting_state):
-    # Gather all states and the alphabet (symbols)
     states = list(dfa.keys())
     alphabet = set()
     for state in states:
         for symbol in dfa[state]["transitions"]:
             alphabet.add(symbol)
 
-    # Partition states into accepting and non-accepting groups
     accepting = {state for state in states if dfa[state]["isTerminatingState"]}
     non_accepting = set(states) - accepting
 
@@ -488,19 +467,15 @@ def minimize_dfa(dfa,starting_state):
     if non_accepting:
         partition.append(non_accepting)
 
-    # Refinement of partitions using transition behavior
     changed = True
     while changed:
         changed = False
         new_partition = []
-        # Process each group in the current partition
         for group in partition:
             if len(group) <= 1:
                 new_partition.append(group)
                 continue
 
-            # Create subgroups based on each state's signature
-            # Signature: tuple of (symbol, destination_group_index) for each symbol in sorted alphabet
             subgroups = {}
             for state in group:
                 signature = []
@@ -508,7 +483,6 @@ def minimize_dfa(dfa,starting_state):
                     dest = dfa[state]["transitions"].get(symbol)
                     dest_group = None
                     if dest is not None:
-                        # Find the group index in partition which contains the destination
                         for idx, part in enumerate(partition):
                             if dest in part:
                                 dest_group = idx
@@ -517,7 +491,6 @@ def minimize_dfa(dfa,starting_state):
                 signature = tuple(signature)
                 subgroups.setdefault(signature, set()).add(state)
             
-            # If more than one subgroup is created, mark as changed
             if len(subgroups) > 1:
                 changed = True
                 for subgroup in subgroups.values():
@@ -526,24 +499,20 @@ def minimize_dfa(dfa,starting_state):
                 new_partition.append(group)
         partition = new_partition
 
-    # STEP 3: Build the minimized DFA
-    # Map each original state to the new minimized state name
     state_mapping = {}
     minimized_dfa = {}
 
-    # Create new state names for each group
     for idx, group in enumerate(partition):
         new_state = f"M{idx}"
         for state in group:
             state_mapping[state] = new_state
-        # Use a representative state (any state) for setting up transitions and termination flag
+
         rep = next(iter(group))
         minimized_dfa[new_state] = {
             "isTerminatingState": dfa[rep]["isTerminatingState"],
             "transitions": {}
         }
 
-    # Remap transitions to use new state names
     for idx, group in enumerate(partition):
         new_state = f"M{idx}"
         rep = next(iter(group))
@@ -556,10 +525,6 @@ def minimize_dfa(dfa,starting_state):
     return minimized_dfa, state_mapping[starting_state]
 
 def compress_symbols(symbols):
-    """
-    Compress a list of single-character symbols into ranges where possible.
-    Example: ['a', 'b', 'c', 'e'] => ['a-c', 'e']
-    """
     symbols = sorted(symbols)
     ranges = []
     i = 0
@@ -581,64 +546,44 @@ def compress_symbols(symbols):
 
 
 def draw_dfa(dfa, initial_state, filename='dfa_graph', view=True):
-    """
-    Draws a DFA using Graphviz, grouping transitions with the same destination
-    and compressing character sequences into ranges like [a-c].
-    """
     dot = Digraph(format='png')
-    dot.attr(rankdir='LR')  # Left-to-right layout
+    dot.attr(rankdir='LR')
 
-    # Optional invisible start node
     dot.node('', shape='none')
 
-    # Create nodes
     for state, info in dfa.items():
         shape = 'doublecircle' if info['isTerminatingState'] else 'circle'
         dot.node(state, shape=shape)
 
-    # Group transitions: { (src, dst): [symbols] }
     grouped_edges = defaultdict(list)
 
     for state, info in dfa.items():
         for symbol, dest in info['transitions'].items():
             grouped_edges[(state, dest)].append(symbol)
 
-    # Draw grouped edges with compressed symbol labels
     for (src, dst), symbols in grouped_edges.items():
         compressed = compress_symbols(symbols)
         label = "[" + ", ".join(compressed) + "]"
         dot.edge(src, dst, label=label)
 
-    # Arrow to initial state
     dot.edge('', initial_state)
 
-    # Render and view
     dot.render(filename, view=view)
 
 
 def draw_nfa( filename='nfa_graph', view=True):
-    """
-    Draws an NFA using Graphviz, adapted for this input format:
-    {
-        'S0': {'isTerminatingState': True, 'a': ['S1'], ...},
-        'S1': {'isTerminatingState': False},
-        'startingState': 'S0'
-    }
-    """
     dot = Digraph(format='png')
     dot.attr(rankdir='LR')
 
     starting_state = nfa['startingState']
-    dot.node('', shape='none')  # invisible starting point
+    dot.node('', shape='none')
 
-    # Create nodes
     for state, info in nfa.items():
         if state == 'startingState':
             continue
         shape = 'doublecircle' if info.get('isTerminatingState', False) else 'circle'
         dot.node(state, shape=shape)
 
-    # Group transitions: { (src, dst): [symbols] }
     grouped_edges = defaultdict(list)
 
     for src_state, info in nfa.items():
@@ -650,9 +595,7 @@ def draw_nfa( filename='nfa_graph', view=True):
             for dst in dests:
                 grouped_edges[(src_state, dst)].append(symbol)
 
-    # Draw edges
     for (src, dst), symbols in grouped_edges.items():
-        # Separate epsilon transitions
         epsilons = [s for s in symbols if s == 'epsilon']
         others = [s for s in symbols if s != 'epsilon']
 
@@ -664,12 +607,22 @@ def draw_nfa( filename='nfa_graph', view=True):
         for _ in epsilons:
             dot.edge(src, dst, label="ε")
 
-    dot.edge('', starting_state)  # initial arrow
+    dot.edge('', starting_state)
 
     dot.render(filename, view=view)
 
 def main():
-    postfix_string = postfix_convert(0, "(abc|de)*|(f+t)+")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("regex", help="Regex pattern to compile")
+    args = parser.parse_args()
+
+    try:
+        re.compile(args.regex)
+    except re.error:
+        print("Invalid regular expression.")
+        return
+
+    postfix_string = postfix_convert(0, args.regex)
     convert_nfa(postfix_string)
     print("NFA:")
     for state, data in nfa.items():
